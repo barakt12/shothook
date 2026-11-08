@@ -54,8 +54,12 @@ extension AppDelegate {
             }
         case "debug-record": // ?mode=screen|region — opens the shortcut recorder
             recordShortcut(for: CaptureMode(rawValue: q["mode"] ?? "") ?? .screen)
-        case "debug-close-windows": // closes any recorder panel (cancel path)
-            NSApp.windows.filter { $0.title.hasPrefix("Shortcut for") }.forEach { $0.performClose(nil) }
+        case "debug-setup": // ?preview=1 pretends nothing is granted yet
+            showSetupGuide(preview: q["preview"] != nil)
+        case "debug-grant": // ?p=screen|ax — presses the guide's Allow… button
+            SetupGuide.shared.grantForTesting(q["p"] == "screen" ? .screenRecording : .accessibility)
+        case "debug-close-windows": // closes the recorder / setup guide (cancel paths)
+            NSApp.windows.filter { $0.title.hasPrefix("Shortcut for") || $0.title == "Shothook Setup" }.forEach { $0.performClose(nil) }
         case "debug-chord": // ?keys=lshift,rshift[,lcmd] — pressed in order, released in reverse
             let names = (q["keys"] ?? "").split(separator: ",").map(String.init)
             Task { await postChord(names) }

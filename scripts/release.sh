@@ -6,8 +6,8 @@
 #                                        Homebrew tap (../homebrew-tap, or $SHOTHOOK_TAP_DIR) if present
 #
 # Gatekeeper-clean downloads need a "Developer ID Application" signing identity and a notarytool
-# keychain profile (one-time: xcrun notarytool store-credentials shothook --apple-id … --team-id …),
-# selected with SHOTHOOK_NOTARY_PROFILE=shothook. Without them the app is still signed, but macOS
+# keychain profile (one-time: xcrun notarytool store-credentials shothook --apple-id … --team-id …);
+# both are picked up automatically. Without them the app is still signed, but macOS
 # asks people to approve it once (System Settings → Privacy & Security → Open Anyway); the
 # Homebrew cask then clears the quarantine flag itself so `brew install` just works.
 set -euo pipefail
@@ -15,7 +15,16 @@ cd "$(dirname "$0")/.."
 
 VERSION="${1:?usage: scripts/release.sh <version> [--publish]}"
 PUBLISH="${2:-}"
-NOTARY="${SHOTHOOK_NOTARY_PROFILE:-}"
+# Releases always prefer a Developer ID identity (even if a dev install uses Apple Development) and
+# then notarize with the "shothook" notarytool profile unless SHOTHOOK_NOTARY_PROFILE says otherwise
+# (set it to "" to skip notarizing).
+DEVELOPER_ID="$(security find-identity -v -p codesigning | awk -F'"' '/Developer ID Application/ && !done {print $2; done=1}')"
+if [[ -n "$DEVELOPER_ID" ]]; then
+  export SHOTHOOK_SIGN_IDENTITY="${SHOTHOOK_SIGN_IDENTITY:-$DEVELOPER_ID}"
+  NOTARY="${SHOTHOOK_NOTARY_PROFILE-shothook}"
+else
+  NOTARY="${SHOTHOOK_NOTARY_PROFILE:-}"
+fi
 APP=build/Shothook.app
 DIST=dist
 REPO="$(gh repo view --json nameWithOwner --jq .nameWithOwner)"

@@ -57,12 +57,16 @@ open it, and drag Shothook into Applications.
 
 **Or build it** from source: `scripts/install.sh` (needs Xcode).
 
-Open Shothook and grant the two permissions macOS asks for (the menu shows a ⚠︎ shortcut to each if missing):
+Open Shothook. A short setup guide walks you through its two permissions:
 
 - **Screen Recording**: to capture.
 - **Accessibility**: for the hotkeys and to send ⌘V to the harness.
 
-Then turn on **Launch at Login** from the menu. If you use a menu-bar manager (Hidden Bar, Bartender,
+**Allow…** opens the exact System Settings pane, with a little helper pinned beneath it. Each
+permission ticks off live as you switch it on, and then the guide shows your hotkeys and an
+**Open at login** switch. You can reopen it any time from the menu: **Setup Guide…**
+
+If you use a menu-bar manager (Hidden Bar, Bartender,
 Ice), Shothook starts next to the clock; ⌘-drag the icon wherever you like.
 
 ## Configure

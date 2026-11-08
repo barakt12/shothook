@@ -45,12 +45,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         tracker = HarnessTracker(config: config)
         store.prune()
 
-        if !AXIsProcessTrusted() {
-            AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionPrompt": true] as CFDictionary)
+        // First run, or a permission is missing (e.g. after a re-sign): the guide walks you through.
+        if !Self.permissionsGranted || !SetupGuide.isComplete {
+            DispatchQueue.main.async { self.showSetupGuide() }
         }
-        if !CGPreflightScreenCaptureAccess() {
-            CGRequestScreenCaptureAccess()
-        }
+    }
+
+    static var permissionsGranted: Bool { AXIsProcessTrusted() && CGPreflightScreenCaptureAccess() }
+
+    func showSetupGuide(preview: Bool = false) {
+        SetupGuide.shared.show(region: config.hotkeys.region, screen: config.hotkeys.screen, preview: preview)
     }
 
     // shothook://region — for Raycast, Shortcuts, BetterTouchTool, scripts. Only the viewfinder:
@@ -217,6 +221,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
 
+        if !Self.permissionsGranted {
+            menu.addItem(item("⚠︎ Finish Setup…") { [weak self] in self?.showSetupGuide() })
+            menu.addItem(.separator())
+        }
         let harness = item("Paste into Harness") { [weak self] in self?.setMode(.harness) }
         harness.state = config.mode == .harness ? .on : .off
         let clipboard = item("Copy to Clipboard Only") { [weak self] in self?.setMode(.clipboard) }
@@ -244,20 +252,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         shortcutsItem.submenu = shortcuts
         menu.addItem(shortcutsItem)
 
-        let settings = "x-apple.systempreferences:com.apple.preference.security?"
-        var warnings = problems.map { ($0, Config.fileURL) }
-        if !AXIsProcessTrusted() { warnings.append(("Grant Accessibility (hotkeys & pasting)…", URL(string: settings + "Privacy_Accessibility")!)) }
-        if !CGPreflightScreenCaptureAccess() { warnings.append(("Grant Screen Recording (needed to capture)…", URL(string: settings + "Privacy_ScreenCapture")!)) }
-        if !warnings.isEmpty {
+        if !problems.isEmpty {
             menu.addItem(.separator())
-            for (warning, url) in warnings {
-                menu.addItem(item("⚠︎ " + warning) { [weak self] in
-                    if url == Config.fileURL { self?.openConfig() } else { NSWorkspace.shared.open(url) }
-                })
+            for problem in problems {
+                menu.addItem(item("⚠︎ " + problem) { [weak self] in self?.openConfig() })
             }
         }
 
         menu.addItem(.separator())
+        menu.addItem(item("Setup Guide…") { [weak self] in self?.showSetupGuide() })
         menu.addItem(item("Open Config…") { [weak self] in self?.openConfig() })
         menu.addItem(item("Reload Config") { [weak self] in self?.reloadConfig() })
         let login = item("Launch at Login") { [weak self] in
