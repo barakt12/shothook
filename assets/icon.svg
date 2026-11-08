@@ -1,4 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#ea580c"/>
-  <text x="32" y="32" dy="0.35em" text-anchor="middle" font-family="ui-sans-serif, system-ui, -apple-system, sans-serif" font-size="32" font-weight="600" fill="#ffffff">S</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="tile" x2="0" y2="1"><stop stop-color="#41384f"/><stop offset="1" stop-color="#211d2e"/></linearGradient>
+    <linearGradient id="accent" x2="0" y2="1"><stop stop-color="#ffb46c"/><stop offset="1" stop-color="#ff7047"/></linearGradient>
+    <linearGradient id="white" x2="0" y2="1"><stop stop-color="#fffdf6"/><stop offset="1" stop-color="#dad5e7"/></linearGradient>
+  </defs>
+  <rect x="102" y="114" width="820" height="824" rx="185" fill="#20162a" opacity="0.08"/>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#tile)"/>
+  <rect x="102" y="102" width="820" height="820" rx="183" fill="none" stroke="#ded7f0" stroke-opacity="0.2" stroke-width="3"/>
+  <g fill="none" stroke="url(#white)" stroke-width="74" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M419 310 H338 Q310 310 310 338 V419"/>
+    <path d="M310 575 V656 Q310 684 338 684 H419"/>
+    <path d="M575 684 H656 Q684 684 684 656 V575"/>
+  </g>
+  <path d="M427 572 C475 482 520 434 620 406" fill="none" stroke="#93829f" stroke-width="47" stroke-linecap="round"/>
+  <g transform="rotate(17 665 345)">
+    <rect x="554" y="248" width="224" height="194" rx="35" fill="url(#accent)"/>
+    <path d="M734 345 V304 Q734 292 722 292 H674" fill="none" stroke="#fff3df" stroke-width="21" stroke-linecap="round"/>
+  </g>
 </svg>
