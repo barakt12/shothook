@@ -57,10 +57,12 @@ if $NOTARIZED; then
   xcrun stapler staple "$DIST/Shothook.dmg"
 fi
 
-# Homebrew cask, pinned to this release's DMG.
+# Homebrew cask, pinned to this release's DMG (passes `brew style`; verified with Homebrew 7).
 SHA="$(shasum -a 256 "$DIST/Shothook.dmg" | cut -d' ' -f1)"
 {
   cat <<EOF
+# frozen_string_literal: true
+
 cask "shothook" do
   version "$VERSION"
   sha256 "$SHA"
@@ -70,21 +72,23 @@ cask "shothook" do
   desc "Hotkey screenshots thrown straight into your AI coding agent"
   homepage "https://github.com/$REPO"
 
-  depends_on macos: ">= :sonoma"
+  depends_on macos: :sonoma
 
   app "Shothook.app"
+
 EOF
   if ! $NOTARIZED; then
     cat <<'EOF'
-
-  # Not notarized yet: clear the download quarantine so Gatekeeper doesn't block first launch.
-  postflight do
-    system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{appdir}/Shothook.app"]
+  # Not notarized yet: clear the download quarantine (on the staged copy, before it moves into
+  # Applications) so Gatekeeper doesn't block the first launch.
+  preflight_steps do
+    run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "Shothook.app"], chdir: ".",
+                          writable_paths: ["Shothook.app"]
   end
+
 EOF
   fi
   cat <<'EOF'
-
   uninstall quit: "dev.shothook.Shothook"
 
   zap trash: [
