@@ -16,9 +16,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private(set) var icon: StatusIcon!
     private var problems: [String] = []
     private var busy = false
+    private var recording = false
 
     // "will" rather than "did": a cold launch via shothook:// can deliver the URL before didFinishLaunching.
     func applicationWillFinishLaunching(_ notification: Notification) {
+        // One Shothook at a time: a second copy (e.g. /Applications and a dev build) would register
+        // the same hotkeys and capture twice. The one already running wins.
+        let me = NSRunningApplication.current
+        if NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "")
+            .contains(where: { $0 != me && !$0.isTerminated }) {
+            log.notice("another Shothook is already running; quitting")
+            exit(0)
+        }
+
         // First launch: start near the clock rather than at the far left, where menu-bar managers
         // (Hidden Bar, Bartender, Ice) and the notch hide new icons. ⌘-dragging it later sticks.
         let positionKey = "NSStatusItem Preferred Position shothook"
@@ -43,12 +53,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
-    // shothook://region, shothook://screen — for Raycast, Shortcuts, BetterTouchTool, scripts.
+    // shothook://region — for Raycast, Shortcuts, BetterTouchTool, scripts. Only the viewfinder:
+    // it captures nothing until the user clicks or drags, so no other app can use this URL to take
+    // a silent screenshot and read it off the clipboard (a Screen Recording permission bypass).
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
-            if let mode = CaptureMode(rawValue: url.host() ?? "") { capture(mode) }
             #if DEBUG
+            if let mode = CaptureMode(rawValue: url.host() ?? "") { capture(mode) } // tests drive both modes
             debugHook(url)
+            #else
+            if url.host() == CaptureMode.region.rawValue { capture(.region) }
             #endif
         }
     }
@@ -161,6 +175,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if !muted { Sounds.whomp() } // let them hear what they turned on
     }
 
+    /// Records a new shortcut for `mode` from the menu. Live hotkeys are paused meanwhile, so
+    /// pressing ⇧⇧ to set it doesn't also fire a capture.
+    func recordShortcut(for mode: CaptureMode) {
+        guard !recording else { return }
+        recording = true
+        hotkeys.unregisterAll()
+        chords.set([])
+        let (name, otherName) = mode == .region ? ("Capture Region", "Capture Screen") : ("Capture Screen", "Capture Region")
+        let current = mode == .region ? config.hotkeys.region : config.hotkeys.screen
+        let other = mode == .region ? config.hotkeys.screen : config.hotkeys.region
+        let recorder = ShortcutRecorder(action: name, current: current) { spec in
+            (try? Trigger(parsing: spec)) == (try? Trigger(parsing: other)) ? "Already used by \(otherName)" : nil
+        }
+        Task {
+            let result = await recorder.run()
+            NSApp.hide(nil) // hand focus back to wherever you were
+            if result != .cancelled {
+                var spec = ""
+                if case .set(let s) = result { spec = s }
+                if mode == .region { config.hotkeys.region = spec } else { config.hotkeys.screen = spec }
+                saveConfig()
+            }
+            reloadConfig() // re-registers the (possibly new) shortcuts
+            recording = false
+        }
+    }
+
+    private func resetShortcuts() {
+        config.hotkeys = Config.default.hotkeys
+        saveConfig()
+        reloadConfig()
+    }
+
     private func saveConfig() {
         do { try config.save() } catch { problems.append("Couldn't save config: \(error.localizedDescription)") }
     }
@@ -188,6 +235,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(.separator())
         menu.addItem(item("Capture Region", trigger: config.hotkeys.region) { [weak self] in self?.capture(.region) })
         menu.addItem(item("Capture Screen", trigger: config.hotkeys.screen) { [weak self] in self?.capture(.screen) })
+        let shortcuts = NSMenu()
+        shortcuts.addItem(item("Capture Region…", trigger: config.hotkeys.region) { [weak self] in self?.recordShortcut(for: .region) })
+        shortcuts.addItem(item("Capture Screen…", trigger: config.hotkeys.screen) { [weak self] in self?.recordShortcut(for: .screen) })
+        shortcuts.addItem(.separator())
+        shortcuts.addItem(item("Reset to Defaults") { [weak self] in self?.resetShortcuts() })
+        let shortcutsItem = NSMenuItem(title: "Shortcuts", action: nil, keyEquivalent: "")
+        shortcutsItem.submenu = shortcuts
+        menu.addItem(shortcutsItem)
 
         let settings = "x-apple.systempreferences:com.apple.preference.security?"
         var warnings = problems.map { ($0, Config.fileURL) }
@@ -221,7 +276,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func item(_ title: String, trigger: String? = nil, _ handler: @escaping () -> Void) -> NSMenuItem {
-        let shortcut = trigger.flatMap { try? Trigger(parsing: $0) }.map { "\t\($0.display)" } ?? ""
+        var shortcut = trigger.flatMap { try? Trigger(parsing: $0) }.map { "\t\($0.display)" } ?? ""
+        if trigger == "" { shortcut = "\tOff" }
         let action = MenuAction(handler)
         let item = NSMenuItem(title: title + shortcut, action: #selector(MenuAction.fire), keyEquivalent: "")
         item.target = action

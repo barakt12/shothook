@@ -77,3 +77,34 @@ struct ChordDetectorTests {
         #expect(d.update([], at: 0) == nil)
     }
 }
+
+struct RecordedSpecTests {
+    @Test func chordsKeepBothSidesButLoosenOneSidedCompanions() {
+        #expect(Trigger.spec(forChord: [.leftShift, .rightShift]) == "lshift+rshift")
+        #expect(Trigger.spec(forChord: [.leftCommand, .leftShift, .rightShift]) == "cmd+lshift+rshift")
+        #expect(Trigger.spec(forChord: [.rightCommand, .leftOption]) == "opt+cmd")
+    }
+
+    @Test func aLoneModifierKeepsItsSide() {
+        #expect(Trigger.spec(forChord: [.rightCommand]) == "rcmd")
+        #expect(Trigger.spec(forChord: [.leftOption]) == "lopt")
+    }
+
+    @Test func keyCombosUseGenericModifierNames() {
+        let opt = Hotkey.Modifier.option.rawValue, shift = Hotkey.Modifier.shift.rawValue, cmd = Hotkey.Modifier.command.rawValue
+        #expect(Trigger.spec(keyCode: 21, carbonModifiers: opt | shift) == "opt+shift+4")
+        #expect(Trigger.spec(keyCode: 1, carbonModifiers: cmd | shift) == "shift+cmd+s")
+        #expect(Trigger.spec(keyCode: 105, carbonModifiers: 0) == "f13")
+        #expect(Trigger.spec(keyCode: 36, carbonModifiers: cmd) == "cmd+return")
+        #expect(Trigger.spec(keyCode: 999, carbonModifiers: cmd) == nil)
+    }
+
+    @Test func recordedSpecsRoundTripThroughTheParser() throws {
+        for keys: ModifierKeys in [[.leftShift, .rightShift], [.leftCommand, .leftShift, .rightShift], [.rightCommand]] {
+            guard case .chord(let chord) = try Trigger(parsing: Trigger.spec(forChord: keys)) else { Issue.record("not a chord"); continue }
+            #expect(chord.matches(keys))
+        }
+        let spec = try #require(Trigger.spec(keyCode: 20, carbonModifiers: Hotkey.Modifier.option.rawValue | Hotkey.Modifier.shift.rawValue))
+        #expect(try Trigger(parsing: spec).display == "⌥⇧3")
+    }
+}

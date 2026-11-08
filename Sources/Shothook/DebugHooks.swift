@@ -52,6 +52,10 @@ extension AppDelegate {
             if let code = UInt16(q["code"] ?? "") {
                 for down in [true, false] { CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: down)?.post(tap: .cghidEventTap) }
             }
+        case "debug-record": // ?mode=screen|region — opens the shortcut recorder
+            recordShortcut(for: CaptureMode(rawValue: q["mode"] ?? "") ?? .screen)
+        case "debug-close-windows": // closes any recorder panel (cancel path)
+            NSApp.windows.filter { $0.title.hasPrefix("Shortcut for") }.forEach { $0.performClose(nil) }
         case "debug-chord": // ?keys=lshift,rshift[,lcmd] — pressed in order, released in reverse
             let names = (q["keys"] ?? "").split(separator: ",").map(String.init)
             Task { await postChord(names) }

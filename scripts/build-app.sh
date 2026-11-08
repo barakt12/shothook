@@ -15,6 +15,10 @@ cp "$BIN" "$APP/Contents/MacOS/Shothook"
 cp Support/Info.plist "$APP/Contents/Info.plist"
 cp Support/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 cp Support/Sounds/*.wav "$APP/Contents/Resources/"
+if [[ -n "${SHOTHOOK_VERSION:-}" ]]; then # release builds stamp their version
+  plutil -replace CFBundleShortVersionString -string "$SHOTHOOK_VERSION" "$APP/Contents/Info.plist"
+  plutil -replace CFBundleVersion -string "$(git rev-list --count HEAD)" "$APP/Contents/Info.plist"
+fi
 
 # Reuse the identity already on the installed app so a rebuild doesn't rotate certs
 # and drop the Screen Recording / Accessibility grants.
@@ -39,5 +43,8 @@ if [[ -z "$IDENTITY" ]]; then
   echo "warning: no signing identity found; ad-hoc signing (permissions reset on each rebuild)" >&2
   IDENTITY="-"
 fi
-codesign --force --options runtime --sign "$IDENTITY" "$APP"
+# Developer ID builds get a secure timestamp: notarization requires it.
+TIMESTAMP=--timestamp=none
+[[ "$IDENTITY" == "Developer ID Application"* ]] && TIMESTAMP=--timestamp
+codesign --force --options runtime "$TIMESTAMP" --sign "$IDENTITY" "$APP"
 echo "built $APP ($(du -sh "$APP" | cut -f1), signed: $IDENTITY)"

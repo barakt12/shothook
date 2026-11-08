@@ -21,6 +21,32 @@ public enum Trigger: Equatable, Sendable {
         }
     }
 
+    /// Config string for a chord recorded from physical keys. In a multi-modifier chord a family
+    /// pressed on one side loosens to "either side" (⌘ + both Shifts → `cmd+lshift+rshift`);
+    /// a lone modifier keeps its side (`rcmd`), or every ⌘ tap would fire it.
+    public static func spec(forChord keys: ModifierKeys) -> String {
+        let families = ModifierChord.Family.allCases.filter { !keys.intersection([$0.left, $0.right]).isEmpty }
+        var generic: [String] = [], sided: [String] = []
+        for family in families {
+            let left = keys.contains(family.left), right = keys.contains(family.right)
+            if left && right {
+                sided += ["l" + family.token, "r" + family.token]
+            } else if families.count == 1 {
+                sided.append((left ? "l" : "r") + family.token)
+            } else {
+                generic.append(family.token)
+            }
+        }
+        return (generic + sided).joined(separator: "+")
+    }
+
+    /// Config string for a key combo recorded from a key event, or nil for an unsupported key.
+    public static func spec(keyCode: UInt32, carbonModifiers: UInt32) -> String? {
+        guard let key = Hotkey.name(forKeyCode: keyCode) else { return nil }
+        let names: [(Hotkey.Modifier, String)] = [(.control, "ctrl"), (.option, "opt"), (.shift, "shift"), (.command, "cmd")]
+        return (names.filter { carbonModifiers & $0.0.rawValue != 0 }.map(\.1) + [key]).joined(separator: "+")
+    }
+
     /// Splits `"cmd+lshift+rshift"` / `"⌘⇧⇧"` into lowercase tokens.
     static func tokens(_ input: String) -> [String] {
         var tokens: [String] = []
@@ -73,6 +99,15 @@ public struct ModifierChord: Equatable, Sendable {
             case .option: .rightOption
             case .shift: .rightShift
             case .command: .rightCommand
+            }
+        }
+
+        var token: String {
+            switch self {
+            case .control: "ctrl"
+            case .option: "opt"
+            case .shift: "shift"
+            case .command: "cmd"
             }
         }
 

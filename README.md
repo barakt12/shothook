@@ -36,15 +36,28 @@ icon confirms. If you've turned on Reduce Motion, you get a calm fade instead.
 - **Paste into Harness / Copy to Clipboard Only** switches modes. Clipboard mode works like
   ⌘⌃⇧4, and the shot flies into the menu-bar icon instead.
 - **Mute Sounds**
+- **Shortcuts**: click an action and press its new hotkey. A modifier combo like ⇧⇧ or a key
+  shortcut like ⌥⇧3 both work; ⌫ turns it off. **Reset to Defaults** is there too.
 - **Capture Region / Capture Screen**, **Open Config…**, **Reload Config**, **Launch at Login**
 
 ## Install
 
+**Homebrew**
+
 ```sh
-scripts/install.sh   # builds, copies to /Applications, launches
+brew install --cask barakt12/tap/shothook
 ```
 
-Grant the two permissions macOS asks for (the menu shows a ⚠︎ shortcut to each if missing):
+**Or download** [**Shothook.dmg**](https://github.com/barakt12/shothook/releases/latest/download/Shothook.dmg),
+open it, and drag Shothook into Applications.
+
+> Shothook isn't notarized by Apple yet. The first time you open a downloaded copy, macOS says
+> it can't verify it. Go to **System Settings → Privacy & Security** and click **Open Anyway**,
+> once. Homebrew installs skip this step.
+
+**Or build it** from source: `scripts/install.sh` (needs Xcode).
+
+Open Shothook and grant the two permissions macOS asks for (the menu shows a ⚠︎ shortcut to each if missing):
 
 - **Screen Recording**: to capture.
 - **Accessibility**: for the hotkeys and to send ⌘V to the harness.
@@ -86,8 +99,10 @@ Ghostty, iTerm, Terminal, Warp, WezTerm, kitty and Alacritty.
 
 ## Automation
 
-`open -g shothook://region` and `open -g shothook://screen` trigger captures from Raycast,
-Shortcuts, BetterTouchTool, or scripts.
+`open -g shothook://region` opens the viewfinder from Raycast, Shortcuts, BetterTouchTool, or
+scripts. There's deliberately no URL for an instant full-screen capture. Any app could fire it
+and read the shot off the clipboard without having Screen Recording permission itself, while
+the viewfinder captures nothing until you click or drag.
 
 ## Good to know
 
@@ -111,7 +126,12 @@ Shortcuts, BetterTouchTool, or scripts.
 swift test               # core logic: hotkeys & chords, config, routing, geometry, shot store
 scripts/build-app.sh     # build/Shothook.app (universal, signed with your dev identity if found)
 python3 scripts/make-sounds.py   # regenerates Support/Sounds/*.wav
+scripts/release.sh 0.2.0 --publish   # DMG + zip + cask → GitHub release, bumps ../homebrew-tap
 ```
+
+With a *Developer ID Application* certificate and a notarytool profile
+(`xcrun notarytool store-credentials shothook …`, then `SHOTHOOK_NOTARY_PROFILE=shothook`), the
+release script also notarizes and staples, so downloads open without the Gatekeeper prompt.
 
 Signing with a stable identity matters: macOS ties the Screen Recording and Accessibility
 grants to the signature, so ad-hoc builds lose them on every rebuild.

@@ -76,6 +76,13 @@ public struct Hotkey: Equatable, Sendable {
         a.keyCode == b.keyCode && a.carbonModifiers == b.carbonModifiers
     }
 
+    /// The config name for a virtual key code (canonical spelling), or nil if unsupported.
+    static func name(forKeyCode code: UInt32) -> String? {
+        if code == 36 { return "return" }
+        if code == 53 { return "escape" }
+        return keyCodes.first { $0.value == code }?.key
+    }
+
     private static let symbolModifiers: [Character: Modifier] = [
         "⌘": .command, "⇧": .shift, "⌥": .option, "⌃": .control,
     ]
