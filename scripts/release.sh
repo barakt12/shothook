@@ -99,8 +99,11 @@ echo "dist/: Shothook.dmg ($(du -h "$DIST/Shothook.dmg" | cut -f1)), Shothook.zi
 
 [[ "$PUBLISH" == "--publish" ]] || exit 0
 
+TAP_NAME="$(dirname "$REPO")/tap"
+NOTES="**Install:** \`brew install --cask $TAP_NAME/shothook\`, or download **Shothook.dmg** below and drag it into Applications."
+$NOTARIZED || NOTES+=$'\n\n'"Not notarized yet: the first time you open a downloaded copy, go to **System Settings → Privacy & Security → Open Anyway** (Homebrew installs skip this)."
 gh release create "v$VERSION" "$DIST/Shothook.dmg" "$DIST/Shothook.zip" --repo "$REPO" \
-  --title "Shothook $VERSION" --generate-notes
+  --title "Shothook $VERSION" --notes "$NOTES" --generate-notes
 TAP="${SHOTHOOK_TAP_DIR:-../homebrew-tap}"
 if [[ -d "$TAP/.git" ]]; then
   mkdir -p "$TAP/Casks"
